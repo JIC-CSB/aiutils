@@ -4,6 +4,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from torchvision.transforms.functional import to_tensor
+
 
 def dice_coeff(input, target):
     smooth = 1.
@@ -131,3 +133,21 @@ def unet_model_from_uri(uri, input_channels=1):
     model.eval()
 
     return model
+
+
+class TrainedUNet(object):
+
+    def __init__(self, uri, input_channels=1):
+
+        self.model = unet_model_from_uri(uri, input_channels=input_channels)
+
+    def predict_mask_from_tensor(self, input_tensor):
+        with torch.no_grad():
+            pred_mask_tensor = self.model(input_tensor[None])
+
+        return pred_mask_tensor.squeeze().numpy()
+
+    def predict_mask_from_image(self, im):
+        input_tensor = to_tensor(im)
+        return self.predict_mask_from_tensor(input_tensor)
+
