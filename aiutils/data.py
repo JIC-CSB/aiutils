@@ -83,3 +83,40 @@ def image_mask_dataset_from_im_mask_iter(output_base_uri, output_name, im_mask_i
             metadata_appends = add_image_mask_pair(output_ds, image, mask, n)
             for relpath, key, value in metadata_appends:
                 output_ds.add_item_metadata(relpath, key, value)
+
+
+class AIModelDataSetCreator(dtoolcore.DerivedDataSetCreator):
+
+    def __init__(self, output_name, output_base_uri, source_ds):
+        try:
+            super().__init__(output_name, output_base_uri, source_ds)
+        except dtoolcore.storagebroker.StorageBrokerOSError:
+            expected_dirpath = os.path.join(output_base_uri, output_name)
+            if os.path.isdir(expected_dirpath):
+                shutil.rmtree(expected_dirpath)
+            super().__init__(output_name, output_base_uri, source_ds)
+
+
+class LimitDataSetWrapper(torch.utils.data.Dataset):
+
+    def __init__(self, wrapped_dataset, limit=8):
+        self.wrapped_dataset = wrapped_dataset
+        self.limit = limit
+
+    @property
+    def name(self):
+        return f"{self.wrapped_dataset.name} (limit {self.limit})"
+
+    @property
+    def uuid(self):
+        return f"{self.wrapped_dataset.uuid}"
+
+    @property
+    def uri(self):
+        return f"{self.wrapped_dataset.uri}"
+
+    def __len__(self):
+        return self.limit
+
+    def __getitem__(self, idx):
+        return self.wrapped_dataset[idx]
