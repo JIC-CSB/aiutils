@@ -12,11 +12,15 @@ def fpath_to_composite_image(model, fpath, dim=(512, 512)):
     im = dbiImage.from_file(fpath)
     scaled_im = resize(im, dim).astype(np.float32)
 
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     input_tensor = to_tensor(scaled_im)
+    input_tensor = input_tensor.to(device)
+
+    model.eval()
     with torch.no_grad():
         pred_mask_tensor = model(input_tensor[None])
 
-        scaled_mask = pred_mask_tensor.squeeze().numpy()
+        scaled_mask = pred_mask_tensor.squeeze().cpu().numpy()
 
     mask = resize(scaled_mask, im.shape)
 
