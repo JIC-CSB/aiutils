@@ -1,5 +1,8 @@
-import dtoolcore
+import os
+import shutil
 
+import torch
+import dtoolcore
 from torchvision.transforms.functional import to_tensor
 
 from dtoolbioimage import Image
@@ -25,6 +28,28 @@ def add_image_mask_pair(output_ds, image, mask, n):
     ]
 
     return metadata_appends
+
+
+class ImageRegressionDataSet(WrappedDataSet):
+
+    def __init__(self, ds_uri):
+        super().__init__(ds_uri)
+
+        self.coords_overlay = self.dataset.get_overlay('coords')
+        self.im_identifiers = list(self.dataset.identifiers)
+
+    def __getitem__(self, idx):
+        idn = self.im_identifiers[idx]
+        image_fpath = self.dataset.item_content_abspath(idn)
+        im = Image.from_file(image_fpath)
+
+        (r0, c0), (r1, c1) = self.coords_overlay[idn]
+        tensor_coords = torch.Tensor([r0, c0, r1, c1])
+
+        return to_tensor(im), tensor_coords
+
+    def __len__(self):
+        return len(self.im_identifiers)
 
 
 class ImageMaskDataSet(WrappedDataSet):
