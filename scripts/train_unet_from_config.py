@@ -25,17 +25,19 @@ from aiutils.config import YAMLConfig
 
 class ProcessDSCallback(BaseCallBack):
 
-    def __init__(self, ds_uri, output_dirpath):
+    def __init__(self, ds_uri, output_dirpath, n=1):
         self.ds = dtoolcore.DataSet.from_uri(ds_uri)
+        self.n = n
 
         self.output_dirpath = pathlib.Path(output_dirpath)
         self.output_dirpath.mkdir(exist_ok=True, parents=True)
 
     def on_epoch_end(self, epoch, model, history):
-        output_fpath = self.output_dirpath / f"epoch{epoch}.png"
-        logging.info(f"Writing composite image to {output_fpath}")
-        procim = composite_image_from_model_and_dataset(model, self.ds)
-        procim.view(dbiImage).save(output_fpath)
+        if epoch % self.n == 0:
+            output_fpath = self.output_dirpath / f"epoch{epoch:03d}.png"
+            logging.info(f"Writing composite image to {output_fpath}")
+            procim = composite_image_from_model_and_dataset(model, self.ds)
+            procim.view(dbiImage).save(output_fpath)
 
 
 @click.command()
@@ -69,7 +71,7 @@ def main(config_fpath):
     loss_fn = dice_loss
     optim = torch.optim.Adam(model.parameters())
 
-    callback = ProcessDSCallback(config.monitor_dataset_uri, "scratch/foo")
+    callback = ProcessDSCallback(config.monitor_dataset_uri, "scratch/tracker", 5)
     with AIModelDataSetCreator(
         config.output_name,
         config.output_base_uri,
