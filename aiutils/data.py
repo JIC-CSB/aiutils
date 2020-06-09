@@ -97,7 +97,27 @@ class ImageMaskDataSet(WrappedDataSet):
         return to_tensor(im), to_tensor(mask)
 
 
-def image_mask_dataset_from_im_mask_iter(output_base_uri, output_name, im_mask_iter, source_dataset):
+def image_mask_dataset_from_im_mask_iter(output_base_uri, output_name, im_mask_iter, source_dataset=None):
+
+    if source_dataset is not None:
+        image_mask_dataset_from_im_mask_iter_and_dataset(output_base_uri, output_name, im_mask_iter, source_dataset)
+    else:
+        image_mask_dataset_from_im_mask_iter_only(output_base_uri, output_name, im_mask_iter)
+
+
+def image_mask_dataset_from_im_mask_iter_only(output_base_uri, output_name, im_mask_iter):
+
+    with dtoolcore.DataSetCreator(
+        output_name,
+        output_base_uri
+    ) as output_ds:
+        for n, (image, mask) in enumerate(im_mask_iter):
+            metadata_appends = add_image_mask_pair(output_ds, image, mask, n)
+            for relpath, key, value in metadata_appends:
+                output_ds.add_item_metadata(relpath, key, value)
+
+
+def image_mask_dataset_from_im_mask_iter_and_dataset(output_base_uri, output_name, im_mask_iter, source_dataset):
 
     with dtoolcore.DerivedDataSetCreator(
         output_name,
@@ -144,4 +164,7 @@ class LimitDataSetWrapper(torch.utils.data.Dataset):
         return self.limit
 
     def __getitem__(self, idx):
+        if idx >= len(self):
+            raise StopIteration
+
         return self.wrapped_dataset[idx]
