@@ -1,5 +1,7 @@
 import dtoolcore
 
+import numpy as np
+import skimage.transform
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -138,16 +140,29 @@ def unet_model_from_uri(uri, input_channels=1):
 class TrainedUNet(object):
 
     def __init__(self, uri, input_channels=1):
-
         self.model = unet_model_from_uri(uri, input_channels=input_channels)
 
     def predict_mask_from_tensor(self, input_tensor):
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        input_tensor = input_tensor.to(device)
+        self.model.eval()
         with torch.no_grad():
             pred_mask_tensor = self.model(input_tensor[None])
 
-        return pred_mask_tensor.squeeze().numpy()
+        return pred_mask_tensor.squeeze().cpu().numpy()
 
     def predict_mask_from_image(self, im):
         input_tensor = to_tensor(im)
         return self.predict_mask_from_tensor(input_tensor)
+
+    def scaled_mask_from_image(self, im, dim=(512, 512)):
+        scaled_im = skimage.transform.resize(im, dim).astype(np.float32)
+
+        scaled_mask = self.predict_mask_from_image(scaled_im)
+
+        rdim, cdim, _ = im.shape
+        mask = skimage.transform.resize(scaled_mask, (rdim, cdim))
+
+        return mask
+
 
